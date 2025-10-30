@@ -5,10 +5,12 @@ import { Company } from '../types';
 interface CompanyTableProps {
   companies: Company[];
   onCompanySelection: (companies: Company[]) => void;
+  onEnrichSingle?: (company: Company) => void;
+  onViewEnrichedProfile?: (company: Company) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
-export default function CompanyTable({ companies, onCompanySelection, showToast }: CompanyTableProps) {
+export default function CompanyTable({ companies, onCompanySelection, onEnrichSingle, onViewEnrichedProfile, showToast }: CompanyTableProps) {
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
 
   const handleSelectAll = () => {
@@ -32,9 +34,18 @@ export default function CompanyTable({ companies, onCompanySelection, showToast 
     onCompanySelection(selectedCompanyObjects);
   };
 
-  const handleEnrichSingle = (company: Company) => {
-    showToast(`Opening enrichment for ${company.name}`, 'info');
-    // This would open the enrichment drawer for a single company
+  const handleEnrichSingle = (company: Company, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEnrichSingle) {
+      onEnrichSingle(company);
+    }
+  };
+
+  const handleViewEnrichedProfile = (company: Company, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onViewEnrichedProfile) {
+      onViewEnrichedProfile(company);
+    }
   };
 
   return (
@@ -133,12 +144,40 @@ export default function CompanyTable({ companies, onCompanySelection, showToast 
                   </div>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => handleEnrichSingle(company)}
-                    className="px-3 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
-                  >
-                    Enrich
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {company.enriched ? (
+                      <>
+                        <div className="flex items-center space-x-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            Enriched
+                          </span>
+                          {company.verifiedCount !== undefined && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title={`Enriched on ${company.enrichedAt ? new Date(company.enrichedAt).toLocaleString() : 'Unknown'}`}>
+                              {company.verifiedCount}V
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => handleViewEnrichedProfile(company, e)}
+                          className="px-3 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
+                        >
+                          View enriched details
+                        </button>
+                      </>
+                    ) : company.enrichmentStatus === 'fetching' || company.enrichmentStatus === 'queued' ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                        <span className="text-xs text-gray-600">Enriching...</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => handleEnrichSingle(company, e)}
+                        className="px-3 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
+                      >
+                        Enrich
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

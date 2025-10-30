@@ -29,6 +29,12 @@ export interface Company {
   profileType: string;
   industry: string;
   matchScore: number;
+  enriched?: boolean;
+  enrichedAt?: string;
+  verifiedCount?: number;
+  genericCount?: number;
+  notFoundCount?: number;
+  enrichmentStatus?: 'estimating' | 'queued' | 'fetching' | 'complete' | 'partial' | 'error';
 }
 
 export interface SearchResponse {
@@ -99,36 +105,54 @@ export interface EnrichmentResult {
   billing: {
     verified_count: number;
     chargeable: number;
+    profile_credit_used?: boolean;
   };
-  // Extended data sections
+  enrichedAt: string;
+  verificationLevel: 'high' | 'medium' | 'low' | 'partial';
   shipmentHistory?: {
     timeline: Array<[string, number]>;
-    rfv: { recency: number; frequency: number; volume: number };
+    rfv: { lastShip: string; shipments90d: number; vol90dMt: number };
   };
-  tradePartners?: Array<{
-    name: string;
-    relationship: string;
-    since: string;
-  }>;
+  tradePartners?: {
+    suppliers: string[];
+    forwarders: string[];
+    recentPartners?: Array<{ name: string; since: string }>;
+  };
   lanes?: Array<{
     from: string;
     to: string;
-    volume: number;
+    mt: number;
   }>;
   keyPeople?: Array<{
     name: string;
     title: string;
+    linkedin?: string;
     confidence: string;
+    lastSeen?: string;
   }>;
   priceTrends?: Array<{
     period: string;
     avgPrice: number;
-    trend: 'up' | 'down' | 'stable';
+    delta?: number;
+    trend?: 'up' | 'down' | 'stable';
   }>;
+  certificates?: string[];
+  risks?: Array<{
+    type: 'sanctions' | 'pep' | 'alert';
+    description: string;
+    severity: 'high' | 'medium' | 'low';
+  }>;
+  companyMeta?: {
+    domain: string;
+    website?: string;
+    socials?: Array<{ platform: string; url: string }>;
+    aliases?: string[];
+  };
   evidence?: Array<{
     fact: string;
     source: string;
-    confidence: number;
+    ts: string;
+    confidence?: number;
   }>;
 }
 
@@ -414,6 +438,21 @@ export interface CreditConsumptionEvent {
 }
 
 // Provenance and Evidence
+export interface EnrichedProfileDrawerData {
+  company: Company;
+  enrichmentResult: EnrichmentResult;
+  loading: boolean;
+}
+
+export type EnrichmentProgressStatus = 'queued' | 'fetching' | 'contacts_done' | 'profile_done' | 'complete' | 'error';
+
+export interface BulkEnrichmentProgress {
+  total: number;
+  completed: number;
+  verifiedContactsFound: number;
+  companyStatuses: Map<string, EnrichmentProgressStatus>;
+}
+
 export interface ProvenanceInfo {
   source: string;
   field: string;

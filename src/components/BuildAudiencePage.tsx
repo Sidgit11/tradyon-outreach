@@ -29,6 +29,8 @@ interface BuildAudiencePageProps {
   onCompanySelection: (companies: Company[]) => void;
   onGetEnrichmentEstimate: (companyIds: string[]) => void;
   onEnrichCompanies: (companyIds: string[]) => void;
+  onEnrichSingle?: (company: Company) => void;
+  onViewEnrichedProfile?: (company: Company) => void;
   onCreateSegment: (name: string, description: string, companyIds: string[]) => void;
   onAddToSegment: (segmentId: string, companyIds: string[]) => void;
   onAddBookmark: (companyId: string) => void;
@@ -55,6 +57,8 @@ export default function BuildAudiencePage({
   onCompanySelection,
   onGetEnrichmentEstimate,
   onEnrichCompanies,
+  onEnrichSingle,
+  onViewEnrichedProfile,
   onCreateSegment,
   onAddToSegment,
   onAddBookmark,
@@ -103,6 +107,8 @@ export default function BuildAudiencePage({
             refineSuggestions={refineSuggestions}
             broadenSuggestions={broadenSuggestions}
             onCompanySelection={onCompanySelection}
+            onEnrichSingle={onEnrichSingle}
+            onViewEnrichedProfile={onViewEnrichedProfile}
             showToast={showToast}
           />
         )}

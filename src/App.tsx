@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   NavigationScreen,
   CampaignTab,
   BuildAudienceTab,
-  SearchAssumptions, 
+  SearchAssumptions,
   Company,
   UploadMatchResult,
-  ContactEnrichmentSettings, 
-  Contact, 
-  OutreachMessage, 
+  ContactEnrichmentSettings,
+  Contact,
+  OutreachMessage,
   ToastMessage,
   Segment,
   Bookmark,
   StickyActionBarState,
   EnrichmentEstimate,
+  EnrichmentResult,
   Product,
   Campaign,
   CampaignDetail,
@@ -21,11 +22,13 @@ import {
   EnrichmentRulesSettings,
   CreditBalance
 } from './types';
-import { 
+import {
   mockSearch,
   mockUploadMatch,
   mockGetEnrichmentEstimate,
   mockEnrich,
+  mockGetEnrichedCompany,
+  mockFindMoreContacts,
   mockGetSegments,
   mockGetBookmarks,
   mockAddBookmark,
@@ -53,6 +56,7 @@ import HotLeadsPage from './components/HotLeadsPage';
 import MyProductsPage from './components/MyProductsPage';
 import SettingsPage from './components/SettingsPage';
 import Toast from './components/Toast';
+import EnrichedProfileDrawer from './components/EnrichedProfileDrawer';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<NavigationScreen>('buildAudience');
@@ -124,6 +128,14 @@ function App() {
   const [selectedContactForOutreach, setSelectedContactForOutreach] = useState<Contact | null>(null);
   const [outreachMessageTemplate, setOutreachMessageTemplate] = useState<OutreachMessage['template']>('intro');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Enriched Profile Drawer state
+  const [enrichedProfileDrawer, setEnrichedProfileDrawer] = useState<{
+    open: boolean;
+    company: Company | null;
+    enrichmentData: EnrichmentResult | null;
+    loading: boolean;
+  }>({ open: false, company: null, enrichmentData: null, loading: false });
 
   // Load saved data on mount
   useEffect(() => {
@@ -245,15 +257,160 @@ function App() {
     }
   };
 
-  const handleEnrichCompanies = async (companyIds: string[]) => {
+  const handleEnrichSingle = async (company: Company) => {
+    // Update company status to fetching
+    setSearchResults(prev => prev.map(c =>
+      c.companyId === company.companyId
+        ? { ...c, enrichmentStatus: 'fetching' as const }
+        : c
+    ));
+
+    // Open drawer with loading state
+    setEnrichedProfileDrawer({
+      open: true,
+      company,
+      enrichmentData: null,
+      loading: true
+    });
+
     try {
-      const results = await mockEnrich(companyIds, enrichmentSettings);
-      showToast(`Enriched ${results.length} companies`, 'success');
-      // Handle enrichment results
+      const results = await mockEnrich([company.companyId]);
+      const enrichmentData = results[0];
+
+      // Update company with enrichment data
+      const updatedCompany: Company = {
+        ...company,
+        enriched: true,
+        enrichedAt: enrichmentData.enrichedAt,
+        verifiedCount: enrichmentData.verified.length,
+        genericCount: enrichmentData.generic.length,
+        notFoundCount: enrichmentData.not_found.length,
+        enrichmentStatus: 'complete'
+      };
+
+      setSearchResults(prev => prev.map(c =>
+        c.companyId === company.companyId ? updatedCompany : c
+      ));
+
+      setEnrichedProfileDrawer({
+        open: true,
+        company: updatedCompany,
+        enrichmentData,
+        loading: false
+      });
+
+      showToast('Enrichment complete', 'success');
+
+      // Deduct credits
+      const creditsUsed = enrichmentData.billing.chargeable * 2 + (enrichmentData.billing.profile_credit_used ? 5 : 0);
+      setCreditBalance(prev => ({
+        ...prev,
+        totalCredits: prev.totalCredits - creditsUsed
+      }));
     } catch (error) {
       console.error('Enrichment failed:', error);
+      setSearchResults(prev => prev.map(c =>
+        c.companyId === company.companyId
+          ? { ...c, enrichmentStatus: 'error' as const }
+          : c
+      ));
+      setEnrichedProfileDrawer({ open: false, company: null, enrichmentData: null, loading: false });
       showToast('Enrichment failed. Please try again.', 'error');
     }
+  };
+
+  const handleViewEnrichedProfile = async (company: Company) => {
+    setEnrichedProfileDrawer({
+      open: true,
+      company,
+      enrichmentData: null,
+      loading: true
+    });
+
+    try {
+      const enrichmentData = await mockGetEnrichedCompany(company.companyId);
+      setEnrichedProfileDrawer({
+        open: true,
+        company,
+        enrichmentData,
+        loading: false
+      });
+    } catch (error) {
+      console.error('Failed to load enrichment data:', error);
+      showToast('Failed to load enrichment data', 'error');
+      setEnrichedProfileDrawer({ open: false, company: null, enrichmentData: null, loading: false });
+    }
+  };
+
+  const handleEnrichCompanies = async (companyIds: string[]) => {
+    // Update all companies to fetching state
+    setSearchResults(prev => prev.map(c =>
+      companyIds.includes(c.companyId)
+        ? { ...c, enrichmentStatus: 'fetching' as const }
+        : c
+    ));
+
+    try {
+      const results = await mockEnrich(companyIds, enrichmentSettings);
+
+      // Update companies with enrichment data
+      setSearchResults(prev => prev.map(company => {
+        const enrichmentData = results.find(r => r.companyId === company.companyId);
+        if (enrichmentData) {
+          return {
+            ...company,
+            enriched: true,
+            enrichedAt: enrichmentData.enrichedAt,
+            verifiedCount: enrichmentData.verified.length,
+            genericCount: enrichmentData.generic.length,
+            notFoundCount: enrichmentData.not_found.length,
+            enrichmentStatus: 'complete' as const
+          };
+        }
+        return company;
+      }));
+
+      const totalVerifiedContacts = results.reduce((sum, r) => sum + r.verified.length, 0);
+      showToast(`Enrichment complete. ${totalVerifiedContacts} verified contacts found.`, 'success');
+
+      // Deduct credits
+      const totalCreditsUsed = results.reduce((sum, r) => {
+        return sum + (r.billing.chargeable * 2) + (r.billing.profile_credit_used ? 5 : 0);
+      }, 0);
+      setCreditBalance(prev => ({
+        ...prev,
+        totalCredits: prev.totalCredits - totalCreditsUsed
+      }));
+
+      // Clear selection
+      setStickyActionBar({ visible: false, selectedCompanies: [] });
+    } catch (error) {
+      console.error('Enrichment failed:', error);
+      setSearchResults(prev => prev.map(c =>
+        companyIds.includes(c.companyId)
+          ? { ...c, enrichmentStatus: 'error' as const }
+          : c
+      ));
+      showToast('Enrichment failed. Please try again.', 'error');
+    }
+  };
+
+  const handleFindMoreContacts = async (companyId: string) => {
+    showToast('Find more contacts functionality coming soon!', 'info');
+  };
+
+  const handleStartOutreach = (email: string, name: string) => {
+    setSelectedContactForOutreach({
+      id: Date.now().toString(),
+      company_name: enrichedProfileDrawer.company?.name || '',
+      contact_name: name,
+      email,
+      verification: 'verified',
+      billed: false
+    });
+    setCurrentScreen('campaigns');
+    setActiveCampaignTab('startNewCampaign');
+    showToast('Opening outreach composer...', 'info');
   };
 
   // Segment handlers
@@ -422,6 +579,8 @@ function App() {
               onCompanySelection={handleCompanySelection}
               onGetEnrichmentEstimate={handleGetEnrichmentEstimate}
               onEnrichCompanies={handleEnrichCompanies}
+              onEnrichSingle={handleEnrichSingle}
+              onViewEnrichedProfile={handleViewEnrichedProfile}
               onCreateSegment={handleCreateSegment}
               onAddToSegment={handleAddToSegment}
               onAddBookmark={handleAddBookmark}
@@ -501,6 +660,34 @@ function App() {
           <Toast key={toast.id} toast={toast} onClose={removeToast} />
         ))}
       </div>
+
+      {/* Enriched Profile Drawer */}
+      <EnrichedProfileDrawer
+        company={enrichedProfileDrawer.company}
+        enrichmentData={enrichedProfileDrawer.enrichmentData}
+        loading={enrichedProfileDrawer.loading}
+        onClose={() => setEnrichedProfileDrawer({ open: false, company: null, enrichmentData: null, loading: false })}
+        onBookmark={handleAddBookmark}
+        onAddToSegment={(companyId) => showToast('Add to segment functionality coming soon!', 'info')}
+        onStartCampaign={(companyId) => {
+          const company = enrichedProfileDrawer.company;
+          if (company) {
+            handleScreenChange('campaigns', {
+              contact: {
+                id: companyId,
+                company_name: company.name,
+                contact_name: '',
+                email: '',
+                verification: 'generic',
+                billed: false
+              }
+            });
+          }
+        }}
+        onFindMoreContacts={handleFindMoreContacts}
+        onStartOutreach={handleStartOutreach}
+        showToast={showToast}
+      />
     </div>
   );
 }

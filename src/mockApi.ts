@@ -388,13 +388,13 @@ export const mockUploadMatch = async (file: File): Promise<UploadMatchResult[]> 
 // Mock Enrichment Estimate
 export const mockGetEnrichmentEstimate = async (companyIds: string[]): Promise<EnrichmentEstimate> => {
   await new Promise(resolve => setTimeout(resolve, 300));
-  
+
   const breakdown = companyIds.map(companyId => {
     const company = mockCompanies.find(c => c.companyId === companyId);
-    const estimatedContacts = Math.floor(Math.random() * 4) + 1; // 1-4 contacts
-    const contactCredits = estimatedContacts * 2; // 2 credits per contact
+    const estimatedContacts = 2; // Default to 2 contacts per company
+    const contactCredits = estimatedContacts * 2; // 2 credits per verified contact
     const profileCredits = 5; // 5 credits for profile data
-    
+
     return {
       companyId,
       companyName: company?.name || 'Unknown Company',
@@ -418,62 +418,136 @@ export const mockGetEnrichmentEstimate = async (companyIds: string[]): Promise<E
 // Mock Enrichment API
 export const mockEnrich = async (
   companyIds: string[],
-  settings: ContactEnrichmentSettings
+  settings?: ContactEnrichmentSettings
 ): Promise<EnrichmentResult[]> => {
   await new Promise(resolve => setTimeout(resolve, 1500));
-  
+
   return companyIds.map(companyId => {
     const company = mockCompanies.find(c => c.companyId === companyId);
-    
+    const hasRisks = Math.random() > 0.9;
+    const contactCount = Math.floor(Math.random() * 3) + 1;
+
     return {
       companyId,
       company: company?.name || 'Unknown Company',
-      verified: [
+      verified: contactCount >= 1 ? [
         {
           name: 'Anna Keller',
           title: 'Head of Procurement',
-          email: 'anna.keller@company.com',
+          email: `anna.keller@${company?.name.toLowerCase().replace(/\s+/g, '')}.com`,
           phone: '+49 30 1234567',
           confidence: 'high',
           why: ['role match', 'smtp verified', 'linkedin match']
-        }
-      ],
+        },
+        ...(contactCount >= 2 ? [{
+          name: 'Marcus Weber',
+          title: 'Category Manager',
+          email: `marcus.weber@${company?.name.toLowerCase().replace(/\s+/g, '')}.com`,
+          phone: '+49 30 7654321',
+          confidence: 'high',
+          why: ['role match', 'smtp verified']
+        }] : [])
+      ] : [],
       generic: [
         {
           name: 'HQ inbox',
-          email: 'info@company.com',
-          why: ['domain verified', 'no person-level email'],
+          email: `info@${company?.name.toLowerCase().replace(/\s+/g, '')}.com`,
+          why: ['domain verified'],
           mutual: 'DHL Global (3 lanes)'
         }
       ],
-      not_found: [],
-      billing: { verified_count: 1, chargeable: 1 },
-      shipmentHistory: {
-        timeline: [['2024-01', 12], ['2024-02', 15], ['2024-03', 18]],
-        rfv: { recency: 15, frequency: 8, volume: 45 }
+      not_found: contactCount === 0 ? [{ reason: 'No contacts found for specified roles' }] : [],
+      billing: {
+        verified_count: contactCount,
+        chargeable: contactCount,
+        profile_credit_used: true
       },
-      tradePartners: [
-        { name: 'VN Spice Co', relationship: 'Supplier', since: '2023-01' },
-        { name: 'DHL Global', relationship: 'Logistics', since: '2022-06' }
-      ],
+      enrichedAt: new Date().toISOString(),
+      verificationLevel: contactCount >= 2 ? 'high' : contactCount === 1 ? 'medium' : 'low',
+      shipmentHistory: {
+        timeline: [
+          ['2024-06', 12], ['2024-07', 15], ['2024-08', 15],
+          ['2024-09', 18], ['2024-10', 14]
+        ],
+        rfv: { lastShip: '2024-10-28', shipments90d: 7, vol90dMt: 42 }
+      },
+      tradePartners: {
+        suppliers: ['VN Spice Co', 'IndoPepper', 'Thai Premium Foods'],
+        forwarders: ['DHL Global', 'Maersk Line', 'CMA CGM'],
+        recentPartners: [
+          { name: 'VN Spice Co', since: '2023-01' },
+          { name: 'DHL Global', since: '2022-06' }
+        ]
+      },
       lanes: [
-        { from: 'Ho Chi Minh', to: 'Rotterdam', volume: 28 },
-        { from: 'Mumbai', to: 'Hamburg', volume: 17 }
+        { from: 'Ho Chi Minh', to: 'Rotterdam', mt: 28 },
+        { from: 'Chennai', to: 'Hamburg', mt: 14 }
       ],
       keyPeople: [
-        { name: 'Anna Keller', title: 'Head of Procurement', confidence: 'high' },
-        { name: 'Marcus Weber', title: 'Operations Manager', confidence: 'medium' }
+        { name: 'Anna Keller', title: 'Head of Procurement', linkedin: 'linkedin.com/in/annakeller', confidence: 'high', lastSeen: '2024-10-15' },
+        { name: 'Marcus Weber', title: 'Operations Manager', confidence: 'medium', lastSeen: '2024-09-20' }
       ],
       priceTrends: [
-        { period: '2024-Q1', avgPrice: 3.2, trend: 'up' },
-        { period: '2024-Q2', avgPrice: 3.4, trend: 'stable' }
+        { period: '2024-06', avgPrice: 3.2, delta: 0.1, trend: 'up' },
+        { period: '2024-07', avgPrice: 3.3, delta: 0.1, trend: 'up' },
+        { period: '2024-08', avgPrice: 3.4, delta: 0.1, trend: 'stable' }
       ],
+      certificates: ['Organic', 'BAP'],
+      risks: hasRisks ? [
+        { type: 'alert', description: 'Recent customs delay reported', severity: 'low' }
+      ] : [],
+      companyMeta: {
+        domain: `${company?.name.toLowerCase().replace(/\s+/g, '')}.com`,
+        website: `https://${company?.name.toLowerCase().replace(/\s+/g, '')}.com`,
+        socials: [
+          { platform: 'LinkedIn', url: `https://linkedin.com/company/${company?.name.toLowerCase().replace(/\s+/g, '-')}` }
+        ],
+        aliases: [company?.name || '']
+      },
       evidence: [
-        { fact: '7 shipments in 90d', source: 'customs_data', confidence: 95 },
-        { fact: 'Exact grade match ASTA 500', source: 'manifest_data', confidence: 88 }
+        { fact: '7 shipments in 90d', source: 'datamyne', ts: '2024-10-30', confidence: 95 },
+        { fact: 'Exact grade match', source: 'panjiva', ts: '2024-10-29', confidence: 88 },
+        { fact: 'Shared forwarder DHL', source: 'customs_data', ts: '2024-10-28', confidence: 92 },
+        { fact: 'Recent activity spike', source: 'manifest_data', ts: '2024-10-27', confidence: 85 },
+        { fact: 'Price band stable', source: 'market_intel', ts: '2024-10-26', confidence: 80 }
       ]
     };
   });
+};
+
+// Get single enriched company data
+export const mockGetEnrichedCompany = async (companyId: string): Promise<EnrichmentResult | null> => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+  const results = await mockEnrich([companyId]);
+  return results[0] || null;
+};
+
+// Find more contacts for a company
+export const mockFindMoreContacts = async (
+  companyId: string,
+  additionalRoles: string[],
+  maxContacts: number
+): Promise<{ contacts: VerifiedContact[]; creditsUsed: number }> => {
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  const newContactCount = Math.min(maxContacts, Math.floor(Math.random() * 2) + 1);
+  const contacts: VerifiedContact[] = [];
+
+  for (let i = 0; i < newContactCount; i++) {
+    contacts.push({
+      name: `Contact ${i + 1}`,
+      title: additionalRoles[i % additionalRoles.length],
+      email: `contact${i + 1}@company.com`,
+      phone: `+49 30 ${Math.floor(Math.random() * 9000000) + 1000000}`,
+      confidence: 'medium',
+      why: ['role match', 'email verified']
+    });
+  }
+
+  return {
+    contacts,
+    creditsUsed: newContactCount * 2
+  };
 };
 
 // Mock Hot Leads APIs

@@ -15,6 +15,8 @@ interface FindBuyersTabProps {
   refineSuggestions: string[];
   broadenSuggestions: string[];
   onCompanySelection: (companies: Company[]) => void;
+  onEnrichSingle?: (company: Company) => void;
+  onViewEnrichedProfile?: (company: Company) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
@@ -29,6 +31,8 @@ export default function FindBuyersTab({
   refineSuggestions,
   broadenSuggestions,
   onCompanySelection,
+  onEnrichSingle,
+  onViewEnrichedProfile,
   showToast
 }: FindBuyersTabProps) {
   const [query, setQuery] = useState(currentQuery);
@@ -184,6 +188,8 @@ export default function FindBuyersTab({
           <CompanyTable
             companies={searchResults}
             onCompanySelection={onCompanySelection}
+            onEnrichSingle={onEnrichSingle}
+            onViewEnrichedProfile={onViewEnrichedProfile}
             showToast={showToast}
           />
         </div>
