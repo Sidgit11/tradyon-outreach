@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Star, MapPin, Building2, Package } from 'lucide-react';
+import { MapPin, Building2, Package } from 'lucide-react';
 import { Company } from '../types';
+import MatchScoreChip from './MatchScoreChip';
 
 interface CompanyTableProps {
   companies: Company[];
@@ -138,10 +139,11 @@ export default function CompanyTable({ companies, onCompanySelection, onEnrichSi
                   <span className="text-sm text-gray-700">{company.industry}</span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="text-sm font-semibold text-gray-900">{company.matchScore}</span>
-                    <Star className="w-4 h-4 ml-1 text-yellow-400 fill-current" />
-                  </div>
+                  <MatchScoreChip
+                    score={company.matchScore}
+                    entityId={company.companyId}
+                    entityType="company"
+                  />
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center space-x-2">

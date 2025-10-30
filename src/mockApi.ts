@@ -1,9 +1,9 @@
-import { 
-  Company, 
-  SearchResponse, 
-  SearchAssumptions, 
-  UploadMatchResult, 
-  EnrichmentResult, 
+import {
+  Company,
+  SearchResponse,
+  SearchAssumptions,
+  UploadMatchResult,
+  EnrichmentResult,
   EnrichmentEstimate,
   ContactEnrichmentSettings,
   Segment,
@@ -23,7 +23,9 @@ import {
   Quote,
   EnrichmentRulesSettings,
   CreditBalance,
-  CreditConsumptionEvent
+  CreditConsumptionEvent,
+  BuyerRow,
+  BuyerDetail
 } from './types';
 
 // Mock Companies Data
@@ -1280,5 +1282,72 @@ export const mockUploadCSV = async (file: File): Promise<{ contacts: Contact[]; 
   return {
     contacts: mockContacts,
     errors: mockErrors
+  };
+};
+
+export const mockBuyerSearch = async (): Promise<BuyerRow[]> => {
+  await new Promise(resolve => setTimeout(resolve, 600));
+
+  return [
+    {
+      rank: 1,
+      buyer: "EuroSpice GmbH",
+      match_score: 92,
+      why: ["Exact ASTA 500 match", "7 shipments in 90d", "EU lanes overlap"],
+      last_ship: "2024-10-28",
+      vol_90d_mt: 42,
+      usd_per_kg_median: 3.4,
+      typical_pack: "500g pouches",
+      top_suppliers: ["VN Spice Co", "IndoPepper", "Thai Premium Foods"],
+      emerging: true,
+      confidence: "high"
+    },
+    {
+      rank: 2,
+      buyer: "Mediterranean Imports Ltd",
+      match_score: 88,
+      why: ["Grade close match", "Recent activity spike", "Shared forwarders"],
+      last_ship: "2024-10-25",
+      vol_90d_mt: 35,
+      usd_per_kg_median: 3.2,
+      typical_pack: "1kg bags",
+      top_suppliers: ["Turkish Spice Co", "Greek Imports"],
+      confidence: "high"
+    },
+    {
+      rank: 3,
+      buyer: "Nordic Food Solutions",
+      match_score: 84,
+      why: ["Spec match", "Consistent volume", "Price band fit"],
+      last_ship: "2024-10-22",
+      vol_90d_mt: 28,
+      usd_per_kg_median: 3.5,
+      typical_pack: "500g pouches",
+      top_suppliers: ["VN Spice Co", "Indian Exports Ltd"],
+      confidence: "high"
+    }
+  ];
+};
+
+export const mockGetBuyerDetail = async (buyerName: string): Promise<BuyerDetail> => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  return {
+    buyer: buyerName,
+    match_score: 92,
+    hq_country: "Germany",
+    shipment_count_90d: 7,
+    volume_90d_mt: 42,
+    avg_price_usd_kg: 3.4,
+    typical_pack: "500g pouches",
+    recent_shipments: [
+      { date: "2024-10-28", origin: "Ho Chi Minh", destination: "Rotterdam", volume_mt: 6, price_usd_kg: 3.5 }
+    ],
+    top_suppliers: ["VN Spice Co", "IndoPepper"],
+    lanes: [
+      { from: "Ho Chi Minh", to: "Rotterdam", frequency: 4 }
+    ],
+    certifications: ["Organic", "BAP"],
+    growth_trend: "up"
   };
 };

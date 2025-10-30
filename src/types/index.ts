@@ -458,3 +458,104 @@ export interface ProvenanceInfo {
   field: string;
   ts: string;
 }
+
+export interface BuyerRow {
+  rank: number;
+  buyer: string;
+  match_score: number;
+  why: string[];
+  last_ship: string;
+  vol_90d_mt: number;
+  usd_per_kg_median: number;
+  typical_pack: string;
+  top_suppliers: string[];
+  emerging?: boolean;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface BuyerDetail {
+  buyer: string;
+  match_score: number;
+  hq_country: string;
+  shipment_count_90d: number;
+  volume_90d_mt: number;
+  avg_price_usd_kg: number;
+  typical_pack: string;
+  recent_shipments: Array<{
+    date: string;
+    origin: string;
+    destination: string;
+    volume_mt: number;
+    price_usd_kg: number;
+  }>;
+  top_suppliers: string[];
+  lanes: Array<{
+    from: string;
+    to: string;
+    frequency: number;
+  }>;
+  certifications?: string[];
+  growth_trend: 'up' | 'down' | 'stable';
+}
+
+export interface SearchWeights {
+  recency: number;
+  volume: number;
+  growth: number;
+  spec_fit: number;
+}
+
+export interface SmartList {
+  id: string;
+  name: string;
+  query: string;
+  assumptions: SearchAssumptions;
+  refreshFrequency: 'daily' | 'weekly' | 'monthly' | 'manual';
+  automationSettings: {
+    notifyOnNewBuyer: boolean;
+    alertOnVolumeIncrease: boolean;
+    moqThresholdCrossed: boolean;
+  };
+  createdAt: string;
+  lastRefresh: string;
+  nextRefresh: string;
+  newLeadsCount: number;
+  refreshStatus: 'idle' | 'refreshing' | 'error';
+}
+
+export type MatchReasonId = 'spec_fit' | 'geo_fit' | 'partners' | 'price_band' | 'rfv' | 'moq';
+export type MatchReasonDirection = 'pos' | 'neg' | 'neu';
+
+export interface MatchReason {
+  id: MatchReasonId;
+  label: string;
+  dir: MatchReasonDirection;
+  contrib?: number;
+}
+
+export interface MatchScoreExplanation {
+  topReasons: MatchReason[];
+  hasBreakdown: boolean;
+  breakdown?: MatchReason[];
+  sum?: number;
+}
+
+export interface MatchScoreReasonsRecord {
+  id: string;
+  entity_id: string;
+  entity_type: 'company' | 'buyer';
+  match_score: number;
+  top_reasons: MatchReason[];
+  created_at: string;
+}
+
+export interface MatchReasonDetail {
+  id: string;
+  match_score_reason_id: string;
+  reason_id: MatchReasonId;
+  label: string;
+  direction: MatchReasonDirection;
+  contribution: number;
+  sort_order: number;
+  created_at: string;
+}

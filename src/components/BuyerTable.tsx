@@ -1,6 +1,7 @@
 import React from 'react';
-import { TrendingUp, Star, Info, Eye } from 'lucide-react';
+import { TrendingUp, Info, Eye } from 'lucide-react';
 import { BuyerRow } from '../types';
+import MatchScoreChip from './MatchScoreChip';
 
 interface BuyerTableProps {
   buyers: BuyerRow[];
@@ -82,10 +83,11 @@ export default function BuyerTable({ buyers, onBuyerSelect, onBuyerAction, loadi
                   </div>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="text-sm font-semibold text-gray-900">{buyer.match_score}</span>
-                    <Star className="w-4 h-4 ml-1 text-yellow-400 fill-current" />
-                  </div>
+                  <MatchScoreChip
+                    score={buyer.match_score}
+                    entityId={buyer.buyer}
+                    entityType="buyer"
+                  />
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-1">
